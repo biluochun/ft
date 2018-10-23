@@ -114,9 +114,19 @@ function draw () {
   myChart.setOption(option);
   myChart1.setOption(option1);
 }
+var lastData = [];
+if (localStorage.lastData) {
+  const temp = JSON.parse(localStorage.lastData);
+  if (temp.length) lastData = temp;
+  TopicCallback(lastData);
+}
 
 const ws = new WebSocket('wss://api.fcoin.com/v2/ws');
-ws.onopen = () => console.log('ws open');
+ws.onopen = () => {
+  console.log('ws open');
+  ws.send(JSON.stringify({ cmd: 'sub', args: ['trade.ftusdt', 20] }));
+};
+
 ws.onmessage = (arg) => {
   const msg = arg.data;
   try {
@@ -125,22 +135,31 @@ ws.onmessage = (arg) => {
       case 'hello': break;
       case 'ping': break;
       case 'topics': console.info('订阅成功', data); break;
-      // default: this.TopicCallback(data); break;
+      default:
+        if (data.type === 'trade.ftusdt') {
+          lastData.push(data);
+          if (lastData.length > 500) {
+            lastData.splice(0, lastData.length - 500);
+          }
+          localStorage.lastData = JSON.stringify(lastData);
+          TopicCallback(data);
+        }
+        break;
     }
   } catch (e) {
     console.error(msg, e);
     return;
   }
 };
-// socket.on('data', (data) => {
-//   console.log(data);
-//   if (data.length) {
-//     data.forEach(d => render(d));
-//   } else {
-//     render(data);
-//   }
-//   draw();
-// });
+function TopicCallback (data) {
+  console.log('data', data);
+  if (data.length) {
+    data.forEach(d => render(d));
+  } else {
+    render(data);
+  }
+  draw();
+}
 
 ws.onerror = (errs) => {
   if (errs) console.error(errs);
