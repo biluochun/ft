@@ -167,7 +167,9 @@ new Vue({
   },
   template: `
   <div class="orderdiv">
-    <el-tag>FT to the moon</el-tag><hr>
+    <el-tag>FT to the moon</el-tag>
+    <el-tag type="info">^_^ 我的FT地址： 0xc204f261369c0575302f3098da8ecb017aad602b  或者我的FCoin账号邮箱： 982748666@qq.com 哈哈~~</el-tag>
+    <hr>
     <el-radio-group v-model="Order.DepthLevel" size="mini" v-loading="loading">
       <!-- <el-radio-button label="L20">20档</el-radio-button> -->
       <el-radio-button label="L150">150档</el-radio-button>
