@@ -42,6 +42,7 @@ ws.onmessage = (arg) => {
 };
 ws.onerror = (errs) => {
   if (errs) console.error(errs);
+  alert('无法连接到fcoin行情接口');
 };
 
 const ListenSymbol = () => {
