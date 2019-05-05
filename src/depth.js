@@ -8,13 +8,18 @@ const query = (() =>{
   return map;
 })();
 
-
 const ws = new WebSocket('wss://api.fcoin.pro/v2/ws');
-const listen = 'depth.L150.' + (query.symbol || 'ftusdt');
-ws.onopen = () => {
-  console.log('ws open');
-  // depth.$level.$symbol
-  ws.send(JSON.stringify({ cmd: 'sub', args: [listen] }));
+
+const Data = {
+  Order: {
+    DepthLevel: 'L150',
+    ViewNumber: 1,
+  },
+  loading: false,
+  Data: null,
+  AllSymbol: null,
+  symbol: query.symbol || 'ftusdt',
+  Selecter: [],
 };
 
 ws.onmessage = (arg) => {
@@ -27,7 +32,7 @@ ws.onmessage = (arg) => {
       case 'ping': break;
       case 'topics': console.info('订阅成功', data); break;
       default:
-        if (data.type === listen) TopicCallback(data);
+        if (data.type === 'depth.L150.' + Data.symbol) TopicCallback(data);
         break;
     }
   } catch (e) {
@@ -39,13 +44,8 @@ ws.onerror = (errs) => {
   if (errs) console.error(errs);
 };
 
-const Data = {
-  Order: {
-    DepthLevel: 'L150',
-    ViewNumber: 1,
-  },
-  loading: false,
-  Data: null,
+const ListenSymbol = () => {
+  ws.send(JSON.stringify({ cmd: 'sub', args: ['depth.L150.' + Data.symbol] }));
 };
 
 // 凑合着用。。。
@@ -84,133 +84,203 @@ function TopicCallback (data) {
   Data.Data = { bids, asks };
 }
 
-new Vue({
-  el: '#app',
-  data () {
-    return Data;
-  },
-  computed: {
-    ViewNumber () {
-      if (this.Order.ViewNumber === 1) return this.Data;
-      if (!this.Data) return this.Data;
-      const bids = [];
-      const asks = [];
-      this.Data.bids.forEach((item, index) => {
-        if (index % this.Order.ViewNumber === 0) {
-          bids.push({ vol: item.vol, price: item.price });
-        } else {
-          const info = bids[bids.length - 1];
-          info.vol = Math2.add(info.vol, item.vol);
-          info.price = item.price;
-        }
-      });
-      this.Data.asks.forEach((item, index) => {
-        if (index % this.Order.ViewNumber === 0) {
-          asks.push({ vol: item.vol, price: item.price });
-        } else {
-          const info = asks[asks.length - 1];
-          info.vol = Math2.add(info.vol, item.vol);
-          info.price = item.price;
-        }
-      });
-      return { bids, asks };
-    },
-    TableData () {
-      // 或免去取这个交易对的数据
-      // const AllSymbolInfo = HiveStore.localState.Symbols;
-      // const SymbolInfo = AllSymbolInfo[`${this.Coins.Coin}${this.Coins.Main}`];
-      // if (!SymbolInfo) {
-      //   return { Buy: [], Sale: [] };
-      // }
-      if (!this.ViewNumber) return { Buy: [], Sale: [] };
-      let BuySum = 0;
-      let SaleSum = 0;
-      let MaxV = 0;
-      const Buy = this.ViewNumber.bids.map(item => {
-        BuySum = Math2.add(BuySum, item.vol);
-        if (item.vol > MaxV) MaxV = item.vol;
-        return {
-          price: item.price,
-          vol: item.vol,
-          per: 0,
-          avol: BuySum,
-        };
-      });
-      const Sale = this.ViewNumber.asks.map(item => {
-        SaleSum = Math2.add(SaleSum, item.vol);
-        if (item.vol > MaxV) MaxV = item.vol;
-        return {
-          price: item.price,
-          vol: item.vol,
-          per: 0,
-          aper: 0,
-          avol: SaleSum,
-        };
-      });
-      const MaxVol = Math.max(BuySum, SaleSum);
-      Buy.forEach(item => {
-        item.per = (item.vol / MaxVol).toFixed(2);
-        item.aper = (item.avol / MaxVol).toFixed(2);
-        // item.price = item.price.toFixed(SymbolInfo.price_decimal);
-        // item.vol = item.vol.toFixed(SymbolInfo.amount_decimal);
-        // item.avol = item.avol.toFixed(SymbolInfo.amount_decimal);
-      });
-      Sale.forEach(item => {
-        item.per = (item.vol / MaxVol).toFixed(2);
-        item.aper = (item.avol / MaxVol).toFixed(2);
-        // item.price = item.price.toFixed(SymbolInfo.price_decimal);
-        // item.vol = item.vol.toFixed(SymbolInfo.amount_decimal);
-        // item.avol = item.avol.toFixed(SymbolInfo.amount_decimal);
-      });
-      return { Buy, Sale };
-    },
-  },
-  template: `
-  <div class="orderdiv">
-    <el-tag>FT to the moon</el-tag>
-    <el-tag type="info">^_^ 我的FT地址： 0xc204f261369c0575302f3098da8ecb017aad602b  或者我的FCoin账号邮箱： 982748666@qq.com 哈哈~~</el-tag>
-    <hr>
-    <el-radio-group v-model="Order.DepthLevel" size="mini" v-loading="loading">
-      <!-- <el-radio-button label="L20">20档</el-radio-button> -->
-      <el-radio-button label="L150">150档</el-radio-button>
-    </el-radio-group>
+const opn = new Promise((resolve) =>{
+  ws.onopen = () => {
+    console.log('ws open');
+    // depth.$level.$symbol
+    setInterval(() =>{
+      ws.send(JSON.stringify({ cmd: 'ping', args: [Date.now()], id: Date.now().toString() }));
+    }, 60000);
+    resolve();
+  };
+});
 
-    <el-radio-group v-model="Order.ViewNumber" size="mini" v-loading="loading">
-      <el-radio-button :label="1">全视图</el-radio-button>
-      <el-radio-button :label="2">压缩两倍</el-radio-button>
-      <el-radio-button :label="4">压缩四倍</el-radio-button>
-      <el-radio-button :label="8">压缩八倍</el-radio-button>
-      <el-radio-button :label="16">压缩十六倍</el-radio-button>
-    </el-radio-group>
-    <hr>
 
-    <div style="width:1002px;overflow:hidden;margin:0 auto;" v-loading="loading">
-      <div class="ul" style="text-align:right;float:left;">
-        <div style="border-bottom:1px solid #eee;overflow:hidden;position: relative;" class="buy">
-          <div style="width:120px;" type="primary">价格</div>
-          <div style="width:180px;">深度</div>
-          <div style="width:180px;">合计深度</div>
-        </div>
-      </div>
-      <div class="ul" style="text-align:left;float:left;">
-        <div style="border-bottom:1px solid #eee;overflow:hidden;position: relative;" class="sale">
-          <div style="width:120px;" type="primary">价格</div>
-          <div style="width:180px;">深度</div>
-          <div style="width:180px;">合计深度</div>
-        </div>
-      </div>
+// 显示
+(async () => {
+  await opn;
+  ListenSymbol();
+  const strrrrr = 'https://www.fcoin.pro/openapi/v2/symbols';
+  const res = await axios.get(strrrrr);
+  if (!res.data) return Vue.prototype.$message.error('网络错误');
+  if (res.data.status !== 'ok') return Vue.prototype.$message.error(strrrrr + ' 请求出错');
+  const SelecterData = [];
+  Data.AllSymbol = res.data.data;
+  for (const i in Data.AllSymbol.symbols) {
+    SelecterData.push(Data.AllSymbol.symbols[i]);
+  }
+  SelecterData.sort((a, b) => {
+    if (a.quote_currency > b.quote_currency) return 1;
+    if (a.quote_currency < b.quote_currency) return -1;
+
+    if (a.base_currency > b.base_currency) return 1;
+    if (a.base_currency < b.base_currency) return -1;
+    return 0;
+  });
+  const map = {};
+  SelecterData.forEach(itm => {
+    const has = map[itm.quote_currency];
+    if (has) return has.push(itm);
+    map[itm.quote_currency] = [itm];
+    Data.Selecter.push({
+      label: itm.quote_currency,
+      data: map[itm.quote_currency],
+    });
+  });
+
+  console.log(Data);
+
+  new Vue({
+    el: '#app',
+    data () {
+      return Data;
+    },
+    computed: {
+      SymbolInfo () {
+        const AllSymbolInfo = Data.AllSymbol.symbols;
+        return AllSymbolInfo[this.symbol] || {};
+      },
+      ViewNumber () {
+        if (this.Order.ViewNumber === 1) return this.Data;
+        if (!this.Data) return this.Data;
+        const bids = [];
+        const asks = [];
+        this.Data.bids.forEach((item, index) => {
+          if (index % this.Order.ViewNumber === 0) {
+            bids.push({ vol: item.vol, price: item.price });
+          } else {
+            const info = bids[bids.length - 1];
+            info.vol = Math2.add(info.vol, item.vol);
+            info.price = item.price;
+          }
+        });
+        this.Data.asks.forEach((item, index) => {
+          if (index % this.Order.ViewNumber === 0) {
+            asks.push({ vol: item.vol, price: item.price });
+          } else {
+            const info = asks[asks.length - 1];
+            info.vol = Math2.add(info.vol, item.vol);
+            info.price = item.price;
+          }
+        });
+        return { bids, asks };
+      },
+      TableData () {
+        if (!this.SymbolInfo) {
+          return { Buy: [], Sale: [] };
+        }
+        if (!this.ViewNumber) return { Buy: [], Sale: [] };
+        let BuySum = 0;
+        let SaleSum = 0;
+        let MaxV = 0;
+        const Buy = this.ViewNumber.bids.map(item => {
+          BuySum = Math2.add(BuySum, item.vol);
+          if (item.vol > MaxV) MaxV = item.vol;
+          return {
+            price: item.price,
+            vol: item.vol,
+            per: 0,
+            avol: BuySum,
+          };
+        });
+        const Sale = this.ViewNumber.asks.map(item => {
+          SaleSum = Math2.add(SaleSum, item.vol);
+          if (item.vol > MaxV) MaxV = item.vol;
+          return {
+            price: item.price,
+            vol: item.vol,
+            per: 0,
+            aper: 0,
+            avol: SaleSum,
+          };
+        });
+        const MaxVol = Math.max(BuySum, SaleSum);
+        Buy.forEach(item => {
+          item.per = (item.vol / MaxVol).toFixed(2);
+          item.aper = (item.avol / MaxVol).toFixed(2);
+          item.price = item.price.toFixed(this.SymbolInfo.price_decimal);
+          item.vol = item.vol.toFixed(this.SymbolInfo.amount_decimal);
+          item.avol = item.avol.toFixed(this.SymbolInfo.amount_decimal);
+        });
+        Sale.forEach(item => {
+          item.per = (item.vol / MaxVol).toFixed(2);
+          item.aper = (item.avol / MaxVol).toFixed(2);
+          item.price = item.price.toFixed(this.SymbolInfo.price_decimal);
+          item.vol = item.vol.toFixed(this.SymbolInfo.amount_decimal);
+          item.avol = item.avol.toFixed(this.SymbolInfo.amount_decimal);
+        });
+        return { Buy, Sale };
+      },
+    },
+
+    methods: {
+      ChangeeSymbol () {
+        ListenSymbol();
+      },
+    },
+    template: `
+    <div class="orderdiv">
+      <el-tag>FT to the moon</el-tag>
+      <el-tag type="info">^_^ 我的FT充值地址： 0xc204f261369c0575302f3098da8ecb017aad602b  我的FCoin账号邮箱： 982748666@qq.com 要打赏的请随意~~</el-tag>
       <hr>
-      <div class="ul" v-for="(data,iii) in [TableData.Buy, TableData.Sale]" :key="iii" :style="{ 'text-align': iii ? 'left' : 'right' }" style="float:left;">
-        <div :title="item.per + '%'" style="border-bottom:1px solid #eee;overflow:hidden; position: relative;" :class="iii ? 'sale' : 'buy'" v-for="(item,index) in data" :key="index">
-          <div style="width:120px;" type="primary">{{ item.price }}</div>
-          <div style="width:180px;">{{ item.vol }}</div>
-          <div style="width:180px;">{{ item.avol }}</div>
-          <div v-if="iii" class="line" :style="{ left: item.aper * 500 - item.per * 500 + 'px', width: item.per * 500 + 'px' }"></div>
-          <div v-else class="line" :style="{ right: item.aper * 500 - item.per * 500 + 'px', width: item.per * 500 + 'px' }"></div>
-          <div class="line all" :style="{ width: item.aper * 500 + 'px' }"></div>
+      <el-select v-model="symbol" clearable filterable placeholder="请选择" size="mini" @change="ChangeeSymbol">
+        <el-option-group
+        v-for="group in Selecter"
+        :key="group.label"
+        :label="group.label">
+          <el-option
+            v-for="item in group.data"
+            :key="item.symbol"
+            :label="item.symbol"
+            :value="item.symbol"
+            :disabled="!item.tradeable">
+            <span style="float: left">{{ item.quote_currency.toLocaleUpperCase() }}</span>
+            <span style="float: right; color: #8492a6; font-size: 13px">{{ item.base_currency.toLocaleUpperCase() }}</span>
+          </el-option>
+        </el-option-group>
+      </el-select>
+      <el-radio-group v-model="Order.DepthLevel" size="mini" v-loading="loading">
+        <!-- <el-radio-button label="L20">20档</el-radio-button> -->
+        <el-radio-button label="L150">150档</el-radio-button>
+      </el-radio-group>
+  
+      <el-radio-group v-model="Order.ViewNumber" size="mini" v-loading="loading">
+        <el-radio-button :label="1">全视图</el-radio-button>
+        <el-radio-button :label="2">压缩两倍</el-radio-button>
+        <el-radio-button :label="4">压缩四倍</el-radio-button>
+        <el-radio-button :label="8">压缩八倍</el-radio-button>
+        <el-radio-button :label="16">压缩十六倍</el-radio-button>
+      </el-radio-group>
+      <hr>
+  
+      <div style="width:1002px;overflow:hidden;margin:0 auto;" v-loading="loading">
+        <div class="ul" style="text-align:right;float:left;">
+          <div style="border-bottom:1px solid #eee;overflow:hidden;position: relative;" class="buy">
+            <div style="width:120px;" type="primary">价格({{ SymbolInfo.quote_currency }})</div>
+            <div style="width:180px;">深度({{ SymbolInfo.base_currency }})</div>
+            <div style="width:180px;">合计深度({{ SymbolInfo.base_currency }})</div>
+          </div>
+        </div>
+        <div class="ul" style="text-align:left;float:left;">
+          <div style="border-bottom:1px solid #eee;overflow:hidden;position: relative;" class="sale">
+            <div style="width:120px;" type="primary">价格({{ SymbolInfo.quote_currency }})</div>
+            <div style="width:180px;">深度({{ SymbolInfo.base_currency }})</div>
+            <div style="width:180px;">合计深度({{ SymbolInfo.base_currency }})</div>
+          </div>
+        </div>
+        <hr>
+        <div class="ul" v-for="(data,iii) in [TableData.Buy, TableData.Sale]" :key="iii" :style="{ 'text-align': iii ? 'left' : 'right' }" style="float:left;">
+          <div :title="item.per + '%'" style="border-bottom:1px solid #eee;overflow:hidden; position: relative;" :class="iii ? 'sale' : 'buy'" v-for="(item,index) in data" :key="index">
+            <div style="width:120px;" type="primary">{{ item.price }}</div>
+            <div style="width:180px;">{{ item.vol }}</div>
+            <div style="width:180px;">{{ item.avol }}</div>
+            <div v-if="iii" class="line" :style="{ left: item.aper * 500 - item.per * 500 + 'px', width: item.per * 500 + 'px' }"></div>
+            <div v-else class="line" :style="{ right: item.aper * 500 - item.per * 500 + 'px', width: item.per * 500 + 'px' }"></div>
+            <div class="line all" :style="{ width: item.aper * 500 + 'px' }"></div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  `,
-});
+    `,
+  });
+})();
