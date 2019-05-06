@@ -1,0 +1,58 @@
+
+/* loaoding 样式 */
+
+@mixin place($n, $t, $l) {
+  animation: $n 1s ease-in-out infinite;
+  top: $t;
+  left: $l;
+}
+$loading-li-width: 16px;
+$margin: 1.8;
+
+#loading {
+  position: absolute; left: 50%; top: 50%;
+  // transform: rotate(0) translate(-50%, -50%);
+  transform: rotate(0);
+  animation: loading-keyframes 4s ease-in-out infinite;
+  li {
+    list-style-type: none;
+    position: absolute;
+    top: 0px;
+    left: 0px;
+    box-shadow: 0 0 2px 1px #00b07c;
+    background: #00b07c;
+    border-radius: 50%;
+  }
+  @for $i from 1 through 4 {
+    @for $j from 1 through 4 {
+      .loading-li-#{$i}-#{$j} {
+        $size: $i + $j;
+        $width: $loading-li-width;
+        animation: loading-keyframes-#{$i}-#{$j} 2s ease-in-out infinite;
+        top: (2 - $j) * $loading-li-width * $margin;
+        left: (2 - $i) * $loading-li-width * $margin;
+        width: $width;
+        height: $width;
+      }
+    }
+  }
+}
+@keyframes loading-keyframes {
+  50% { transform: rotate(180deg); }
+  100% { transform: rotate(360deg); }
+}
+@for $i from 1 through 4 {
+  @for $j from 1 through 4 {
+    @keyframes loading-keyframes-#{$i}-#{$j} {
+      50% {
+        top: abs(4 - $j) * $loading-li-width * $margin;
+        left: abs(4 - $i) * $loading-li-width * $margin;
+      }
+      100% {
+        top: (2 - $i) * $loading-li-width * $margin;
+        left: (2 - $j) * $loading-li-width * $margin;
+      }
+    }
+  }
+}
+
