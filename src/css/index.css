@@ -1,5 +1,10 @@
 @charset "UTF-8";
 /* loaoding 样式 */
+#app {
+  text-align: center;
+  line-height: 4rem;
+  font-size: 2rem; }
+
 #loading {
   position: absolute;
   left: 50%;

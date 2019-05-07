@@ -1,5 +1,6 @@
 
 /* loaoding 样式 */
+#app{ text-align: center; line-height: 4rem; font-size: 2rem }
 
 @mixin place($n, $t, $l) {
   animation: $n 1s ease-in-out infinite;

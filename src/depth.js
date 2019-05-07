@@ -108,7 +108,7 @@ const opn = new Promise((resolve) =>{
   const SelecterData = [];
   Data.AllSymbol = res.data.data;
   for (const i in Data.AllSymbol.symbols) {
-    SelecterData.push(Data.AllSymbol.symbols[i]);
+    if (Data.AllSymbol.symbols[i].tradeable) SelecterData.push(Data.AllSymbol.symbols[i]);
   }
   SelecterData.sort((a, b) => {
     if (a.quote_currency > b.quote_currency) return 1;
@@ -225,10 +225,7 @@ const opn = new Promise((resolve) =>{
       <el-tag type="info">^_^ 我的FT充值地址： 0xc204f261369c0575302f3098da8ecb017aad602b  我的FCoin账号邮箱： 982748666@qq.com 要打赏的请随意~~</el-tag>
       <hr>
       <el-select v-model="symbol" clearable filterable placeholder="请选择" size="mini" @change="ChangeeSymbol">
-        <el-option-group
-        v-for="group in Selecter"
-        :key="group.label"
-        :label="group.label">
+        <el-option-group v-for="group in Selecter" :key="group.label" :label="group.label">
           <el-option
             v-for="item in group.data"
             :key="item.symbol"
