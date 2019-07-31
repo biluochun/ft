@@ -222,7 +222,7 @@ const opn = new Promise((resolve) =>{
     template: `
     <div class="orderdiv">
       <el-tag>FT to the moon</el-tag>
-      <el-tag type="info">^_^ 我的FT充值地址： 0xc204f261369c0575302f3098da8ecb017aad602b  我的FCoin账号邮箱： 982748666@qq.com 要打赏的请随意~~</el-tag>
+      <el-tag type="info">^_^ FT充值地址： fcoinaccount001 （tag: 640）  FCoin账号邮箱： 982748666@qq.com 要打赏的请随意~~</el-tag>
       <hr>
       <el-select v-model="symbol" clearable filterable placeholder="请选择" size="mini" @change="ChangeeSymbol">
         <el-option-group v-for="group in Selecter" :key="group.label" :label="group.label">
